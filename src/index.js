@@ -1,39 +1,63 @@
 import { createStore } from "redux";
 
-const addBtn = document.querySelector("#add");
-const minusBtn = document.querySelector("#minus");
-const num = document.querySelector("span");
+const form = document.querySelector("form");
+const input = document.querySelector("input");
+const btn = document.querySelector("button");
+const ul = document.querySelector("ul");
 
-// string 값 실수 할 수 있으니, 상수로 선언
-const ADD = "ADD";
-const MINUS = "MINUS";
+const ADD_TODO = "ADD_TODO";
+const DEL_TODO = "DEL_TODO";
 
-// reducer -> switch 구문으로 케이스 나누기
-const countModifer = (count = 0, action) => {
+const reducer = (todo = [], action) => {
   switch (action.type) {
-    case ADD:
-      return count + 1;
-    case MINUS:
-      return count - 1;
-    default:
-      return count;
+    case ADD_TODO: {
+      return [{ text: action.text, id: action.id }, ...todo];
+    }
+
+    case DEL_TODO: {
+      const todo = document.querySelector(`#${action.id}`);
+      todo.remove();
+      return;
+    }
+
+    default: {
+      return todo;
+    }
   }
 };
 
-// store 생성
-const countStore = createStore(countModifer);
+const todoStore = createStore(reducer);
 
-// Listener. state의 변화를 감지하고, 변화가 생길 때마다 실행된다.
-const updateState = () => {
-  num.innerHTML = countStore.getState();
+// 삭제되는 경우, 여기서 바로 값을 지워주면 안된다.
+// state를 변경하고 그 변경된 값으로 paintTodos를 실행해서 html에 반영해주어야 한다.
+const handleDelete = (e) => {
+  const { id } = e.target.parentNode;
+  // 이렇게 dispatch에 값으로 바로 object를 쓴 다음 넘겨줄 수도 있지만,
+  // 관습적으로, reducer 위에 action object를 리턴하는 함수를 선언하고 그 함수의 리턴 값을 통해 값을 전달하는 경우가 많다.
+  todoStore.dispatch({ type: DEL_TODO, id });
 };
 
-// state가 변경될 때 실행될 함수(Listener)를 등록한다.
-countStore.subscribe(updateState);
+// 삭제 하든, 추가를 하든 실행되는 함수이므로, 추가되는 경우만 생각하면 안된다.
+const paintTodos = () => {
+  const { text, id } = todoStore.getState()[0];
+  const li = document.createElement("li");
+  const delBtn = document.createElement("button");
+  li.innerText = text + " ";
+  li.id = id;
+  delBtn.innerText = "삭제";
+  delBtn.addEventListener("click", handleDelete);
+  li.appendChild(delBtn);
+  ul.appendChild(li);
+};
+todoStore.subscribe(paintTodos);
 
-// span에 들어갈 처음 값을 설정
-num.innerHTML = countStore.getState();
+// 추가되는 경우, 여기서 바로 값을 생성하면 안된다.
+// dispatch를 통해 state를 변경한후 그 변경된 state로 paintTodos를 해서 값을 반영해주어야 한다.
+const handleSave = (e) => {
+  e.preventDefault();
+  const text = input.value;
+  input.value = "";
+  todoStore.dispatch({ type: ADD_TODO, text, id: Date.now() });
+};
 
-// dispatch를 통해 action.type 메세지 전달 시 상수 사용
-addBtn.addEventListener("click", () => countStore.dispatch({ type: ADD }));
-minusBtn.addEventListener("click", () => countStore.dispatch({ type: MINUS }));
+form.addEventListener("submit", handleSave);
