@@ -2,62 +2,72 @@ import { createStore } from "redux";
 
 const form = document.querySelector("form");
 const input = document.querySelector("input");
-const btn = document.querySelector("button");
 const ul = document.querySelector("ul");
 
 const ADD_TODO = "ADD_TODO";
 const DEL_TODO = "DEL_TODO";
 
-const reducer = (todo = [], action) => {
+// Action Creator(액션 생성 함수)
+// 관습적으로 Reducer Function 위에 쓰인다.
+const actionAdd = (text) => {
+  return { type: ADD_TODO, text, id: Date.now() };
+};
+
+const actionDelete = (id) => {
+  return { type: DEL_TODO, id };
+};
+
+const reducer = (todos = [], action) => {
   switch (action.type) {
     case ADD_TODO: {
-      return [{ text: action.text, id: action.id }, ...todo];
+      const newTodo = { text: action.text, id: action.id };
+      return [newTodo, ...todos];
     }
 
     case DEL_TODO: {
-      const todo = document.querySelector(`#${action.id}`);
-      todo.remove();
-      return;
+      return todos.filter((todo) => todo.id !== action.id);
     }
 
     default: {
-      return todo;
+      return todos;
     }
   }
 };
 
 const todoStore = createStore(reducer);
 
-// 삭제되는 경우, 여기서 바로 값을 지워주면 안된다.
-// state를 변경하고 그 변경된 값으로 paintTodos를 실행해서 html에 반영해주어야 한다.
+// 지우는 경우 action 보내기
 const handleDelete = (e) => {
-  const { id } = e.target.parentNode;
-  // 이렇게 dispatch에 값으로 바로 object를 쓴 다음 넘겨줄 수도 있지만,
-  // 관습적으로, reducer 위에 action object를 리턴하는 함수를 선언하고 그 함수의 리턴 값을 통해 값을 전달하는 경우가 많다.
-  todoStore.dispatch({ type: DEL_TODO, id });
+  // id가 String이기때문에 형변환 시켜주어야 한다.
+  const id = parseInt(e.target.parentNode.id);
+  todoStore.dispatch(actionDelete(id));
 };
 
-// 삭제 하든, 추가를 하든 실행되는 함수이므로, 추가되는 경우만 생각하면 안된다.
+// state 변경 시 다시 그리기
 const paintTodos = () => {
-  const { text, id } = todoStore.getState()[0];
-  const li = document.createElement("li");
-  const delBtn = document.createElement("button");
-  li.innerText = text + " ";
-  li.id = id;
-  delBtn.innerText = "삭제";
-  delBtn.addEventListener("click", handleDelete);
-  li.appendChild(delBtn);
-  ul.appendChild(li);
+  // 다시 그려져야 하니까 이전의 내용이 없어져야 한다.
+  ul.innerHTML = "";
+  const todos = todoStore.getState();
+  todos.forEach((todo) => {
+    const li = document.createElement("li");
+    const delBtn = document.createElement("button");
+    li.innerText = todo.text + " ";
+    li.id = todo.id;
+    delBtn.innerText = "삭제";
+    delBtn.addEventListener("click", handleDelete);
+    li.appendChild(delBtn);
+    ul.appendChild(li);
+  });
 };
+
 todoStore.subscribe(paintTodos);
 
-// 추가되는 경우, 여기서 바로 값을 생성하면 안된다.
-// dispatch를 통해 state를 변경한후 그 변경된 state로 paintTodos를 해서 값을 반영해주어야 한다.
+// 추가하는 경우 경우 action 보내기
 const handleSave = (e) => {
   e.preventDefault();
   const text = input.value;
   input.value = "";
-  todoStore.dispatch({ type: ADD_TODO, text, id: Date.now() });
+  todoStore.dispatch(actionAdd(text));
 };
 
 form.addEventListener("submit", handleSave);
